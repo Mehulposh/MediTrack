@@ -16,6 +16,8 @@ export default function Appointments() {
 
   useEffect(() => {
     loadAppointments();
+    
+    
   }, []);
 
   useEffect(() => {
@@ -25,6 +27,7 @@ export default function Appointments() {
   const loadAppointments = async () => {
     try {
       const response = await adminService.getAppointments();
+      console.log(response);
       setAppointments(response.data);
     } catch (error) {
       toast.error('Failed to load appointments');
@@ -170,7 +173,7 @@ export default function Appointments() {
                       <div>
                         <p className="text-sm text-gray-600 mb-1">Patient</p>
                         <p className="font-semibold text-gray-800">
-                          {patient.fullName || `${patient.firstName} ${patient.lastName}`}
+                          {patient.fullName ||`${patient.firstName} ${patient.lastName}`}
                         </p>
                         <p className="text-sm text-gray-600">{patient.phoneNumber}</p>
                       </div>

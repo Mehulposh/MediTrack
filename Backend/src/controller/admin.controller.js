@@ -1,5 +1,6 @@
 import Patient from '../models/Patient.js';
 import Doctor from '../models/Doctor.js';
+import User from '../models/User.js';
 import Appointment from '../models/Appointment.js';
 import VisitSummary from '../models/VisitSummary.js';
 
@@ -107,6 +108,8 @@ export const addDoctor = async (req, res) => {
       data: populatedDoctor
     });
   } catch (error) {
+    console.log('addDoctor', error);
+    
     res.status(500).json({ success: false, message: error.message });
   }
 };
