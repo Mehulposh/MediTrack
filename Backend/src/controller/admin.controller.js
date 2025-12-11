@@ -4,53 +4,117 @@ import Appointment from '../models/Appointment.js';
 import VisitSummary from '../models/VisitSummary.js';
 
 
-// Get patient profile
-export const getProfile = async (req, res) => {
+// Dashboard statistics
+export const getDashboardStats = async (req, res) => {
   try {
-    const patient = await Patient.findOne({ userId: req.user.userId });
+    const totalPatients = await Patient.countDocuments();
+    const totalDoctors = await Doctor.countDocuments();
+    const totalAppointments = await Appointment.countDocuments();
     
-    if (!patient) {
-      return res.status(404).json({ success: false, message: 'Patient not found' });
-    }
-
-    res.json({ success: true, data: patient });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-// Update patient profile
-export const updateProfile = async (req, res) => {
-  try {
-    const allowedUpdates = ['firstName', 'lastName', 'phoneNumber', 'address', 'bloodGroup', 'allergies', 'emergencyContact'];
-    const updates = {};
-
-    Object.keys(req.body).forEach(key => {
-      if (allowedUpdates.includes(key)) {
-        updates[key] = req.body[key];
-      }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    const todayAppointments = await Appointment.countDocuments({
+      appointmentDate: { $gte: today, $lt: tomorrow }
     });
 
-    const patient = await Patient.findOneAndUpdate(
-      { userId: req.user.userId },
-      updates,
-      { new: true, runValidators: true }
-    );
+    const upcomingAppointments = await Appointment.countDocuments({
+      appointmentDate: { $gte: today },
+      status: 'scheduled'
+    });
 
-    if (!patient) {
-      return res.status(404).json({ success: false, message: 'Patient not found' });
-    }
+    // This month's appointments
+    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const monthAppointments = await Appointment.countDocuments({
+      appointmentDate: { $gte: firstDayOfMonth }
+    });
 
-    res.json({ success: true, message: 'Profile updated', data: patient });
+    res.json({
+      success: true,
+      data: {
+        totalPatients,
+        totalDoctors,
+        totalAppointments,
+        todayAppointments,
+        upcomingAppointments,
+        monthAppointments
+      }
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// Browse doctors
+// Add doctor
+export const addDoctor = async (req, res) => {
+  try {
+    const {
+      email,
+      password,
+      firstName,
+      lastName,
+      specialization,
+      qualification,
+      experience,
+      licenseNumber,
+      phoneNumber,
+      consultationFee,
+      bio,
+      availability
+    } = req.body;
+
+    // Check if email already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ success: false, message: 'Email already registered' });
+    }
+
+    // Check if license number already exists
+    const existingLicense = await Doctor.findOne({ licenseNumber });
+    if (existingLicense) {
+      return res.status(400).json({ success: false, message: 'License number already exists' });
+    }
+
+    // Create user account
+    const user = await User.create({
+      email,
+      password,
+      role: 'doctor'
+    });
+
+    // Create doctor profile
+    const doctor = await Doctor.create({
+      userId: user._id,
+      firstName,
+      lastName,
+      specialization,
+      qualification,
+      experience,
+      licenseNumber,
+      phoneNumber,
+      consultationFee,
+      bio,
+      availability: availability || []
+    });
+
+    const populatedDoctor = await Doctor.findById(doctor._id).populate('userId', 'email');
+
+    res.status(201).json({
+      success: true,
+      message: 'Doctor added successfully',
+      data: populatedDoctor
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Get all doctors
 export const getDoctors = async (req, res) => {
   try {
-    const { specialization, page = 1, limit = 10 } = req.query;
+    const { page = 1, limit = 10, specialization } = req.query;
     
     const query = {};
     if (specialization) {
@@ -58,10 +122,10 @@ export const getDoctors = async (req, res) => {
     }
 
     const doctors = await Doctor.find(query)
-      .populate('userId', 'email')
+      .populate('userId', 'email isActive')
       .limit(limit * 1)
       .skip((page - 1) * limit)
-      .sort({ rating: -1 });
+      .sort({ createdAt: -1 });
 
     const count = await Doctor.countDocuments(query);
 
@@ -79,10 +143,10 @@ export const getDoctors = async (req, res) => {
   }
 };
 
-// Get doctor details
+// Get doctor by ID
 export const getDoctorById = async (req, res) => {
   try {
-    const doctor = await Doctor.findById(req.params.id).populate('userId', 'email');
+    const doctor = await Doctor.findById(req.params.id).populate('userId', 'email isActive');
     
     if (!doctor) {
       return res.status(404).json({ success: false, message: 'Doctor not found' });
@@ -94,171 +158,156 @@ export const getDoctorById = async (req, res) => {
   }
 };
 
-// Book appointment
-export const bookAppointment = async (req, res) => {
+// Update doctor
+export const updateDoctor = async (req, res) => {
   try {
-    const patient = await Patient.findOne({ userId: req.user.userId });
+    const allowedUpdates = [
+      'firstName', 'lastName', 'specialization', 'qualification',
+      'experience', 'phoneNumber', 'consultationFee', 'bio', 'availability'
+    ];
     
-    if (!patient) {
-      return res.status(404).json({ success: false, message: 'Patient not found' });
-    }
+    const updates = {};
+    Object.keys(req.body).forEach(key => {
+      if (allowedUpdates.includes(key)) {
+        updates[key] = req.body[key];
+      }
+    });
 
-    const { doctorId, appointmentDate, appointmentTime, reason, notes } = req.body;
+    const doctor = await Doctor.findByIdAndUpdate(
+      req.params.id,
+      updates,
+      { new: true, runValidators: true }
+    ).populate('userId', 'email');
 
-    // Check if doctor exists
-    const doctor = await Doctor.findById(doctorId);
     if (!doctor) {
       return res.status(404).json({ success: false, message: 'Doctor not found' });
     }
 
-    // Check if slot is already booked
-    const existingAppointment = await Appointment.findOne({
-      doctorId,
-      appointmentDate: new Date(appointmentDate),
-      appointmentTime,
-      status: 'scheduled'
-    });
-
-    if (existingAppointment) {
-      return res.status(400).json({ success: false, message: 'Time slot already booked' });
-    }
-
-    const appointment = await Appointment.create({
-      patientId: patient._id,
-      doctorId,
-      appointmentDate,
-      appointmentTime,
-      reason,
-      notes
-    });
-
-    const populatedAppointment = await Appointment.findById(appointment._id)
-      .populate('patientId', 'firstName lastName phoneNumber')
-      .populate('doctorId', 'firstName lastName specialization');
-
-    res.status(201).json({
-      success: true,
-      message: 'Appointment booked successfully',
-      data: populatedAppointment
-    });
+    res.json({ success: true, message: 'Doctor updated', data: doctor });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// Get patient appointments
-export const getAppointments = async (req, res) => {
+// Delete/Deactivate doctor
+export const deleteDoctor = async (req, res) => {
   try {
-    const patient = await Patient.findOne({ userId: req.user.userId });
+    const doctor = await Doctor.findById(req.params.id);
     
-    if (!patient) {
-      return res.status(404).json({ success: false, message: 'Patient not found' });
+    if (!doctor) {
+      return res.status(404).json({ success: false, message: 'Doctor not found' });
     }
 
-    const { status, upcoming } = req.query;
+    // Deactivate user account instead of deleting
+    await User.findByIdAndUpdate(doctor.userId, { isActive: false });
+
+    res.json({ success: true, message: 'Doctor deactivated successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Set doctor availability
+export const setDoctorAvailability = async (req, res) => {
+  try {
+    const { availability } = req.body;
+
+    const doctor = await Doctor.findByIdAndUpdate(
+      req.params.id,
+      { availability },
+      { new: true, runValidators: true }
+    );
+
+    if (!doctor) {
+      return res.status(404).json({ success: false, message: 'Doctor not found' });
+    }
+
+    res.json({ success: true, message: 'Availability updated', data: doctor });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Get all appointments
+export const getAppointments = async (req, res) => {
+  try {
+    const { date, doctorId, status, page = 1, limit = 20 } = req.query;
     
-    const query = { patientId: patient._id };
+    const query = {};
+    
+    if (date) {
+      const searchDate = new Date(date);
+      query.appointmentDate = {
+        $gte: new Date(searchDate.setHours(0, 0, 0)),
+        $lt: new Date(searchDate.setHours(23, 59, 59))
+      };
+    }
+    
+    if (doctorId) {
+      query.doctorId = doctorId;
+    }
     
     if (status) {
       query.status = status;
     }
-    
-    if (upcoming === 'true') {
-      query.appointmentDate = { $gte: new Date() };
-      query.status = 'scheduled';
-    }
 
     const appointments = await Appointment.find(query)
-      .populate('doctorId', 'firstName lastName specialization consultationFee')
+      .populate('patientId', 'firstName lastName phoneNumber')
+      .populate('doctorId', 'firstName lastName specialization')
+      .limit(limit * 1)
+      .skip((page - 1) * limit)
       .sort({ appointmentDate: -1, appointmentTime: -1 });
 
-    res.json({ success: true, data: appointments });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
+    const count = await Appointment.countDocuments(query);
 
-// Cancel appointment
-export const cancelAppointment = async (req, res) => {
-  try {
-    const patient = await Patient.findOne({ userId: req.user.userId });
-    const { cancellationReason } = req.body;
-
-    const appointment = await Appointment.findOne({
-      _id: req.params.id,
-      patientId: patient._id
+    res.json({
+      success: true,
+      data: appointments,
+      pagination: {
+        total: count,
+        page: parseInt(page),
+        pages: Math.ceil(count / limit)
+      }
     });
-
-    if (!appointment) {
-      return res.status(404).json({ success: false, message: 'Appointment not found' });
-    }
-
-    if (appointment.status !== 'scheduled') {
-      return res.status(400).json({ success: false, message: 'Cannot cancel this appointment' });
-    }
-
-    // Check if cancellation is at least 2 hours before appointment
-    const appointmentDateTime = new Date(appointment.appointmentDate);
-    const [hours, minutes] = appointment.appointmentTime.split(':');
-    appointmentDateTime.setHours(parseInt(hours), parseInt(minutes));
-
-    const hoursUntilAppointment = (appointmentDateTime - new Date()) / (1000 * 60 * 60);
-
-    if (hoursUntilAppointment < 2) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Cannot cancel appointment less than 2 hours before scheduled time' 
-      });
-    }
-
-    appointment.status = 'cancelled';
-    appointment.cancelledBy = 'patient';
-    appointment.cancellationReason = cancellationReason;
-    await appointment.save();
-
-    res.json({ success: true, message: 'Appointment cancelled', data: appointment });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// Get visit summaries
-export const getVisitSummaries = async (req, res) => {
+// Get all patients
+export const getPatients = async (req, res) => {
   try {
-    const patient = await Patient.findOne({ userId: req.user.userId });
+    const { page = 1, limit = 20, search } = req.query;
     
-    if (!patient) {
-      return res.status(404).json({ success: false, message: 'Patient not found' });
+    let query = {};
+    
+    if (search) {
+      query = {
+        $or: [
+          { firstName: { $regex: search, $options: 'i' } },
+          { lastName: { $regex: search, $options: 'i' } },
+          { phoneNumber: { $regex: search, $options: 'i' } }
+        ]
+      };
     }
 
-    const visitSummaries = await VisitSummary.find({ patientId: patient._id })
-      .populate('doctorId', 'firstName lastName specialization')
-      .populate('appointmentId', 'appointmentDate appointmentTime')
+    const patients = await Patient.find(query)
+      .populate('userId', 'email')
+      .limit(limit * 1)
+      .skip((page - 1) * limit)
       .sort({ createdAt: -1 });
 
-    res.json({ success: true, data: visitSummaries });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
+    const count = await Patient.countDocuments(query);
 
-// Get single visit summary
-export const getVisitSummary = async (req, res) => {
-  try {
-    const patient = await Patient.findOne({ userId: req.user.userId });
-
-    const visitSummary = await VisitSummary.findOne({
-      _id: req.params.id,
-      patientId: patient._id
-    })
-      .populate('doctorId', 'firstName lastName specialization')
-      .populate('appointmentId', 'appointmentDate appointmentTime');
-
-    if (!visitSummary) {
-      return res.status(404).json({ success: false, message: 'Visit summary not found' });
-    }
-
-    res.json({ success: true, data: visitSummary });
+    res.json({
+      success: true,
+      data: patients,
+      pagination: {
+        total: count,
+        page: parseInt(page),
+        pages: Math.ceil(count / limit)
+      }
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

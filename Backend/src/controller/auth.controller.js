@@ -1,7 +1,7 @@
 import User from '../models/User.js';
 import Patient from '../models/Patient.js';
 import Doctor from '../models/Doctor.js';
-import { generateToken, generateRefreshToken, verifyRefreshToken } from '../utils/jwt.util.js';
+import { generateToken, generateRefreshToken, verifyRefreshToken } from '../utils/jwt.utils.js';
 
 
 // Register Patient
