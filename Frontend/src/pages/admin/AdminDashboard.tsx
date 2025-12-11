@@ -2,8 +2,8 @@ import { Routes, Route } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
 import Sidebar from '../../components/Sidebar';
 import Overview from './Overview';
-import Doctors from './Doctors';
-import Appointments from './Appointments';
+import Doctors from './Doctor';
+import Appointments from './Appontment';
 import Patients from './Patients';
 import { LayoutDashboard, Users, Calendar, UserCheck } from 'lucide-react';
 
