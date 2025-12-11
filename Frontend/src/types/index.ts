@@ -4,6 +4,12 @@ export interface User {
   role: 'patient' | 'doctor' | 'admin';
 }
 
+export interface MedicalHistoryEntry {
+  condition: string;
+  diagnosedDate?: string; // ISO date string
+  notes?: string;
+}
+
 export interface Patient {
   _id: string;
   userId: string;
@@ -28,6 +34,8 @@ export interface Patient {
   };
   fullName: string;
   age: number;
+
+  medicalHistory?: MedicalHistoryEntry[];
 }
 
 export interface Doctor {
@@ -46,6 +54,22 @@ export interface Doctor {
   rating: number;
   totalReviews: number;
   fullName: string;
+}
+
+
+// NEW: Data Transfer Object for CREATE requests
+export interface CreateDoctorDTO {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  specialization: string;
+  qualification: string;
+  experience: number;      // already parsed
+  licenseNumber: string;
+  phoneNumber: string;
+  consultationFee: number; // already parsed
+  bio?: string;
 }
 
 export interface Availability {

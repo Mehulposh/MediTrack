@@ -1,5 +1,5 @@
 import api from './apiservices.ts';
-import type { ApiResponse, Doctor, Appointment, Patient , Availability} from '../types/index.ts';
+import type { ApiResponse, Doctor, Appointment, Patient , Availability , CreateDoctorDTO} from '../types/index.ts';
 
 export const adminService = {
   async getDashboardStats(): Promise<ApiResponse<any>> {
@@ -7,7 +7,7 @@ export const adminService = {
     return response.data;
   },
 
-  async addDoctor(data: Doctor): Promise<ApiResponse<Doctor>> {
+  async addDoctor(data: CreateDoctorDTO): Promise<ApiResponse<Doctor>> {
     const response = await api.post('/admin/doctors', data);
     return response.data;
   },
