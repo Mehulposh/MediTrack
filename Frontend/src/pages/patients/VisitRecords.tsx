@@ -51,7 +51,7 @@ export default function VisitRecords() {
         <div className="space-y-4">
           {visitSummaries.map((visit) => {
             const doctor = visit.doctorId as any;
-            const appointment = visit.appointmentId as string;
+            // const appointment = visit.appointmentId as string;
             
             return (
               <Card

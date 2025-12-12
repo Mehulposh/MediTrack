@@ -33,11 +33,7 @@ export default function Doctors() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [addModal, setAddModal] = useState(false);
-  const [editModal, setEditModal] = useState<{ show: boolean; doctor: Doctor | null }>({
-    show: false,
-    doctor: null,
-  });
-
+  
   const {
     register,
     handleSubmit,
@@ -174,8 +170,7 @@ export default function Doctors() {
 
               <div className="flex gap-2">
                 <button
-                  onClick={() => setEditModal({ show: true, doctor })}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition flex items-center justify-center gap-2"
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition flex items-center justify-center gap-2"
                 >
                   <Edit className="w-4 h-4" />
                   Edit

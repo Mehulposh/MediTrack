@@ -4,7 +4,7 @@ import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { useForm } from 'react-hook-form';
 import { doctorService } from '../../services/doctorservice';
-import type { Appointment , VisitSummary} from '../../types/index.ts';
+import type { Appointment} from '../../types/index.ts';
 import Card from '../../components/Card.tsx';
 import Loading from '../../components/Loader.tsx';
 import Modal from '../../components/Modal.tsx';
