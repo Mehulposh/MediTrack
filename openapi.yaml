@@ -1,0 +1,1510 @@
+openapi: 3.0.3
+info:
+  title: MediTrack API
+  description: |
+    Complete clinic management and patient portal API.
+    
+    ## Authentication
+    Most endpoints require JWT authentication. Include the token in the Authorization header:
+    ```
+    Authorization: Bearer <your_jwt_token>
+    ```
+    
+    ## User Roles
+    - **Patient**: Can book appointments, view records, manage profile
+    - **Doctor**: Can manage schedule, add visit summaries, view patients
+    - **Admin**: Can manage doctors, view all appointments and patients
+  version: 1.0.0
+  contact:
+    name: MediTrack Support
+    email: mehulposhattiwr4995@gmail.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8082/api
+    description: Development server
+  - url: https://meditrack-b0go.onrender.comapi
+    description: Production server
+
+tags:
+  - name: Authentication
+    description: User authentication and authorization
+  - name: Patient
+    description: Patient-specific operations
+  - name: Doctor
+    description: Doctor-specific operations
+  - name: Admin
+    description: Admin-specific operations
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from login endpoint
+
+  schemas:
+    User:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: "507f1f77bcf86cd799439011"
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+        role:
+          type: string
+          enum: [patient, doctor, admin]
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    Patient:
+      type: object
+      properties:
+        _id:
+          type: string
+        userId:
+          type: string
+        firstName:
+          type: string
+          example: "John"
+        lastName:
+          type: string
+          example: "Doe"
+        fullName:
+          type: string
+          example: "John Doe"
+        dateOfBirth:
+          type: string
+          format: date
+          example: "1990-01-15"
+        age:
+          type: integer
+          example: 33
+        gender:
+          type: string
+          enum: [male, female, other]
+        phoneNumber:
+          type: string
+          pattern: '^\d{10}$'
+          example: "9876543210"
+        address:
+          type: object
+          properties:
+            street:
+              type: string
+            city:
+              type: string
+            state:
+              type: string
+            zipCode:
+              type: string
+            country:
+              type: string
+              default: "India"
+        bloodGroup:
+          type: string
+          enum: [A+, A-, B+, B-, AB+, AB-, O+, O-]
+        allergies:
+          type: array
+          items:
+            type: string
+          example: ["Penicillin", "Peanuts"]
+        emergencyContact:
+          type: object
+          properties:
+            name:
+              type: string
+            relationship:
+              type: string
+            phoneNumber:
+              type: string
+        medicalHistory:
+          type: array
+          items:
+            type: object
+            properties:
+              condition:
+                type: string
+              diagnosedDate:
+                type: string
+                format: date
+              notes:
+                type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    Doctor:
+      type: object
+      properties:
+        _id:
+          type: string
+        userId:
+          type: string
+        firstName:
+          type: string
+          example: "Sarah"
+        lastName:
+          type: string
+          example: "Johnson"
+        fullName:
+          type: string
+          example: "Dr. Sarah Johnson"
+        specialization:
+          type: string
+          example: "Cardiology"
+        qualification:
+          type: string
+          example: "MD, DM Cardiology"
+        experience:
+          type: integer
+          example: 15
+        licenseNumber:
+          type: string
+          example: "MED123456"
+        phoneNumber:
+          type: string
+          example: "9876543210"
+        consultationFee:
+          type: number
+          example: 1000
+        bio:
+          type: string
+        availability:
+          type: array
+          items:
+            type: object
+            properties:
+              day:
+                type: string
+                enum: [monday, tuesday, wednesday, thursday, friday, saturday, sunday]
+              slots:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    startTime:
+                      type: string
+                      pattern: '^([01]\d|2[0-3]):([0-5]\d)$'
+                      example: "09:00"
+                    endTime:
+                      type: string
+                      pattern: '^([01]\d|2[0-3]):([0-5]\d)$'
+                      example: "17:00"
+                    isAvailable:
+                      type: boolean
+                      default: true
+        rating:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 5
+          example: 4.5
+        totalReviews:
+          type: integer
+          example: 127
+        createdAt:
+          type: string
+          format: date-time
+
+    Appointment:
+      type: object
+      properties:
+        _id:
+          type: string
+        patientId:
+          oneOf:
+            - type: string
+            - $ref: '#/components/schemas/Patient'
+        doctorId:
+          oneOf:
+            - type: string
+            - $ref: '#/components/schemas/Doctor'
+        appointmentDate:
+          type: string
+          format: date
+          example: "2024-12-20"
+        appointmentTime:
+          type: string
+          pattern: '^([01]\d|2[0-3]):([0-5]\d)$'
+          example: "10:00"
+        status:
+          type: string
+          enum: [scheduled, completed, cancelled, no-show]
+          default: scheduled
+        reason:
+          type: string
+          example: "Regular checkup"
+        notes:
+          type: string
+        cancelledBy:
+          type: string
+          enum: [patient, doctor, admin]
+        cancellationReason:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    VisitSummary:
+      type: object
+      properties:
+        _id:
+          type: string
+        appointmentId:
+          type: string
+        patientId:
+          oneOf:
+            - type: string
+            - $ref: '#/components/schemas/Patient'
+        doctorId:
+          oneOf:
+            - type: string
+            - $ref: '#/components/schemas/Doctor'
+        symptoms:
+          type: string
+          example: "Fever, headache, body pain"
+        diagnosis:
+          type: string
+          example: "Viral fever"
+        vitalSigns:
+          type: object
+          properties:
+            bloodPressure:
+              type: string
+              example: "120/80"
+            temperature:
+              type: number
+              example: 98.6
+            heartRate:
+              type: integer
+              example: 72
+            weight:
+              type: number
+              example: 70.5
+            height:
+              type: number
+              example: 175
+        prescription:
+          type: array
+          items:
+            type: object
+            properties:
+              medicineName:
+                type: string
+                example: "Paracetamol"
+              dosage:
+                type: string
+                example: "500mg"
+              frequency:
+                type: string
+                example: "3 times daily"
+              duration:
+                type: string
+                example: "5 days"
+              instructions:
+                type: string
+                example: "Take after meals"
+        labTests:
+          type: array
+          items:
+            type: object
+            properties:
+              testName:
+                type: string
+              notes:
+                type: string
+        notes:
+          type: string
+        followUpDate:
+          type: string
+          format: date
+        attachments:
+          type: array
+          items:
+            type: object
+            properties:
+              filename:
+                type: string
+              url:
+                type: string
+              uploadedAt:
+                type: string
+                format: date-time
+        createdAt:
+          type: string
+          format: date-time
+
+    AuthResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            user:
+              $ref: '#/components/schemas/User'
+            profile:
+              oneOf:
+                - $ref: '#/components/schemas/Patient'
+                - $ref: '#/components/schemas/Doctor'
+            token:
+              type: string
+              description: JWT access token
+            refreshToken:
+              type: string
+              description: JWT refresh token
+
+    ApiResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+        pagination:
+          type: object
+          properties:
+            total:
+              type: integer
+            page:
+              type: integer
+            pages:
+              type: integer
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: "Error message"
+        errors:
+          type: array
+          items:
+            type: string
+
+  responses:
+    UnauthorizedError:
+      description: Access token is missing or invalid
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            message: "Access token required"
+
+    ForbiddenError:
+      description: User doesn't have permission to access this resource
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            message: "Access forbidden: Insufficient permissions"
+
+    NotFoundError:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            message: "Resource not found"
+
+    ValidationError:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            message: "Validation error"
+            errors: ["Email is required", "Password must be at least 6 characters"]
+
+paths:
+  # ==================== AUTHENTICATION ====================
+  /auth/register/patient:
+    post:
+      tags:
+        - Authentication
+      summary: Register a new patient
+      description: Creates a new patient account with user credentials and personal information
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+                - firstName
+                - lastName
+                - dateOfBirth
+                - gender
+                - phoneNumber
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 6
+                firstName:
+                  type: string
+                  minLength: 2
+                lastName:
+                  type: string
+                  minLength: 2
+                dateOfBirth:
+                  type: string
+                  format: date
+                gender:
+                  type: string
+                  enum: [male, female, other]
+                phoneNumber:
+                  type: string
+                  pattern: '^\d{10}$'
+            example:
+              email: "patient@example.com"
+              password: "password123"
+              firstName: "John"
+              lastName: "Doe"
+              dateOfBirth: "1990-01-15"
+              gender: "male"
+              phoneNumber: "9876543210"
+      responses:
+        '201':
+          description: Patient registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          description: Server error
+
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Login user
+      description: Authenticates user and returns JWT tokens
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+            example:
+              email: "user@example.com"
+              password: "password123"
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Account is inactive
+
+  /auth/refresh-token:
+    post:
+      tags:
+        - Authentication
+      summary: Refresh access token
+      description: Generates new access and refresh tokens using refresh token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - refreshToken
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        '200':
+          description: Tokens refreshed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      token:
+                        type: string
+                      refreshToken:
+                        type: string
+        '401':
+          description: Invalid refresh token
+
+  /auth/profile:
+    get:
+      tags:
+        - Authentication
+      summary: Get current user profile
+      description: Returns the authenticated user's profile information
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        $ref: '#/components/schemas/User'
+                      profile:
+                        oneOf:
+                          - $ref: '#/components/schemas/Patient'
+                          - $ref: '#/components/schemas/Doctor'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  # ==================== PATIENT ENDPOINTS ====================
+  /patient/profile:
+    get:
+      tags:
+        - Patient
+      summary: Get patient profile
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Patient profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Patient'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+    put:
+      tags:
+        - Patient
+      summary: Update patient profile
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                firstName:
+                  type: string
+                lastName:
+                  type: string
+                phoneNumber:
+                  type: string
+                address:
+                  type: object
+                bloodGroup:
+                  type: string
+                allergies:
+                  type: array
+                  items:
+                    type: string
+                emergencyContact:
+                  type: object
+      responses:
+        '200':
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/Patient'
+
+  /patient/doctors:
+    get:
+      tags:
+        - Patient
+      summary: Browse doctors
+      description: Get list of doctors with optional filters
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: specialization
+          in: query
+          schema:
+            type: string
+          description: Filter by specialization
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: List of doctors
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Doctor'
+                  pagination:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                      page:
+                        type: integer
+                      pages:
+                        type: integer
+
+  /patient/doctors/{id}:
+    get:
+      tags:
+        - Patient
+      summary: Get doctor details
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Doctor details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Doctor'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /patient/appointments:
+    get:
+      tags:
+        - Patient
+      summary: Get patient appointments
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [scheduled, completed, cancelled, no-show]
+        - name: upcoming
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: List of appointments
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Appointment'
+
+    post:
+      tags:
+        - Patient
+      summary: Book appointment
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - doctorId
+                - appointmentDate
+                - appointmentTime
+                - reason
+              properties:
+                doctorId:
+                  type: string
+                appointmentDate:
+                  type: string
+                  format: date
+                appointmentTime:
+                  type: string
+                  pattern: '^([01]\d|2[0-3]):([0-5]\d)$'
+                reason:
+                  type: string
+                notes:
+                  type: string
+            example:
+              doctorId: "507f1f77bcf86cd799439011"
+              appointmentDate: "2024-12-20"
+              appointmentTime: "10:00"
+              reason: "Regular checkup"
+              notes: "First visit"
+      responses:
+        '201':
+          description: Appointment booked successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/Appointment'
+        '400':
+          description: Time slot already booked or validation error
+
+  /patient/appointments/{id}/cancel:
+    put:
+      tags:
+        - Patient
+      summary: Cancel appointment
+      description: Cancel appointment (must be at least 2 hours before scheduled time)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - cancellationReason
+              properties:
+                cancellationReason:
+                  type: string
+      responses:
+        '200':
+          description: Appointment cancelled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/Appointment'
+        '400':
+          description: Cannot cancel appointment less than 2 hours before scheduled time
+
+  /patient/visit-summaries:
+    get:
+      tags:
+        - Patient
+      summary: Get visit summaries
+      description: Get all visit summaries for the patient
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of visit summaries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/VisitSummary'
+
+  /patient/visit-summaries/{id}:
+    get:
+      tags:
+        - Patient
+      summary: Get single visit summary
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Visit summary details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/VisitSummary'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  # ==================== DOCTOR ENDPOINTS ====================
+  /doctor/profile:
+    get:
+      tags:
+        - Doctor
+      summary: Get doctor profile
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Doctor profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Doctor'
+
+    put:
+      tags:
+        - Doctor
+      summary: Update doctor profile
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                phoneNumber:
+                  type: string
+                consultationFee:
+                  type: number
+                bio:
+                  type: string
+                availability:
+                  type: array
+      responses:
+        '200':
+          description: Profile updated
+
+  /doctor/appointments:
+    get:
+      tags:
+        - Doctor
+      summary: Get doctor's appointments
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: List of appointments
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Appointment'
+
+  /doctor/appointments/today:
+    get:
+      tags:
+        - Doctor
+      summary: Get today's schedule
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Today's appointments
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Appointment'
+
+  /doctor/appointments/history:
+    get:
+      tags:
+        - Doctor
+      summary: Get appointments history
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Appointments history
+
+  /doctor/appointments/{id}/no-show:
+    put:
+      tags:
+        - Doctor
+      summary: Mark appointment as no-show
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Appointment marked as no-show
+
+  /doctor/patients/{patientId}:
+    get:
+      tags:
+        - Doctor
+      summary: Get patient details and history
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: patientId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Patient details with visit history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      patient:
+                        $ref: '#/components/schemas/Patient'
+                      visitHistory:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/VisitSummary'
+
+  /doctor/visit-summaries:
+    post:
+      tags:
+        - Doctor
+      summary: Add visit summary
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - appointmentId
+                - symptoms
+                - diagnosis
+              properties:
+                appointmentId:
+                  type: string
+                symptoms:
+                  type: string
+                diagnosis:
+                  type: string
+                vitalSigns:
+                  type: object
+                prescription:
+                  type: array
+                  items:
+                    type: object
+                labTests:
+                  type: array
+                notes:
+                  type: string
+                followUpDate:
+                  type: string
+                  format: date
+      responses:
+        '201':
+          description: Visit summary added successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/VisitSummary'
+
+  /doctor/visit-summaries/{id}:
+    put:
+      tags:
+        - Doctor
+      summary: Update visit summary
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Visit summary updated
+
+  # ==================== ADMIN ENDPOINTS ====================
+  /admin/dashboard/stats:
+    get:
+      tags:
+        - Admin
+      summary: Get dashboard statistics
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Dashboard statistics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      totalPatients:
+                        type: integer
+                      totalDoctors:
+                        type: integer
+                      todayAppointments:
+                        type: integer
+                      upcomingAppointments:
+                        type: integer
+                      monthAppointments:
+                        type: integer
+                      totalAppointments:
+                        type: integer
+
+  /admin/doctors:
+    get:
+      tags:
+        - Admin
+      summary: Get all doctors
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: specialization
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of doctors
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Doctor'
+                  pagination:
+                    type: object
+
+    post:
+      tags:
+        - Admin
+      summary: Add new doctor
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+                - firstName
+                - lastName
+                - specialization
+                - qualification
+                - experience
+                - licenseNumber
+                - phoneNumber
+                - consultationFee
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                firstName:
+                  type: string
+                lastName:
+                  type: string
+                specialization:
+                  type: string
+                qualification:
+                  type: string
+                experience:
+                  type: integer
+                licenseNumber:
+                  type: string
+                phoneNumber:
+                  type: string
+                consultationFee:
+                  type: number
+                bio:
+                  type: string
+                availability:
+                  type: array
+            example:
+              email: "doctor@example.com"
+              password: "doctor123"
+              firstName: "Sarah"
+              lastName: "Johnson"
+              specialization: "Cardiology"
+              qualification: "MD, DM Cardiology"
+              experience: 15
+              licenseNumber: "MED123456"
+              phoneNumber: "9876543210"
+              consultationFee: 1000
+              bio: "Experienced cardiologist"
+      responses:
+        '201':
+          description: Doctor added successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/Doctor'
+
+  /admin/doctors/{id}:
+    get:
+      tags:
+        - Admin
+      summary: Get doctor by ID
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Doctor details
+
+    put:
+      tags:
+        - Admin
+      summary: Update doctor
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Doctor updated
+
+    delete:
+      tags:
+        - Admin
+      summary: Delete/Deactivate doctor
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Doctor deactivated successfully
+
+  /admin/doctors/{id}/availability:
+    put:
+      tags:
+        - Admin
+      summary: Set doctor availability
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - availability
+              properties:
+                availability:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      day:
+                        type: string
+                      slots:
+                        type: array
+      responses:
+        '200':
+          description: Availability updated
+
+  /admin/appointments:
+    get:
+      tags:
+        - Admin
+      summary: Get all appointments
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: doctorId
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of appointments
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Appointment'
+                  pagination:
+                    type: object
+
+  /admin/patients:
+    get:
+      tags:
+        - Admin
+      summary: Get all patients
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by name or phone
+      responses:
+        '200':
+          description: List of patients
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Patient'
+                  pagination:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                      page:
+                        type: integer
+                      pages:
+                        type: integer
